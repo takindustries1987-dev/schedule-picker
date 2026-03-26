@@ -378,13 +378,15 @@ function onGisLoad() {
 
 function signIn() {
   if (!gapiReady || !gisReady) { setTimeout(signIn, 300); return; }
-  tokenClient.requestAccessToken({ prompt: '' });
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
 function signOut() {
   const tok = gapi.client.getToken();
   if (tok) google.accounts.oauth2.revoke(tok.access_token);
   gapi.client.setToken(null);
+  // Googleのセッションキャッシュもクリア
+  google.accounts.id.disableAutoSelect();
   document.getElementById('auth-section').style.display = 'flex';
   document.getElementById('cal-section').style.display  = 'none';
   document.getElementById('logout-btn').style.display   = 'none';
