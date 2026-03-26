@@ -272,6 +272,22 @@
       font-size: 13px;
       grid-column: 1 / -1;
     }
+
+    .warning-note {
+      margin-top: 20px;
+      padding: 14px 16px;
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.7;
+      max-width: 320px;
+      text-align: left;
+    }
+    .warning-note strong { color: #333; }
+    .warning-note ol { padding-left: 18px; margin-top: 6px; }
+    .warning-note li { margin-bottom: 2px; }
   </style>
 </head>
 <body>
@@ -293,6 +309,16 @@
     </svg>
     Googleでログイン
   </button>
+
+  <div class="warning-note">
+    <strong>⚠️ 警告画面が出た場合の手順</strong>
+    <ol>
+      <li>「このアプリはGoogleで確認されていません」と表示されたら</li>
+      <li>左下の<strong>「詳細」</strong>をタップ</li>
+      <li><strong>「スケジュールピッカー（安全でないページ）に移動」</strong>をタップ</li>
+    </ol>
+    個人のカレンダー参照のみに使用します。2回目以降は表示されません。
+  </div>
 </div>
 
 <!-- ===== Main (hidden until login) ===== -->
