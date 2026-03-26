@@ -37,6 +37,7 @@
       cursor: pointer;
       display: none;
     }
+    #logout-btn.visible { display: inline-block !important; }
 
     /* ===== Auth ===== */
     #auth-section {
@@ -370,7 +371,7 @@ function onGisLoad() {
       if (resp.error) return;
       document.getElementById('auth-section').style.display = 'none';
       document.getElementById('cal-section').style.display  = 'block';
-      document.getElementById('logout-btn').style.display   = 'inline-block';
+      const lb = document.getElementById('logout-btn'); lb.style.display='inline-block'; lb.classList.add('visible');
       loadCal();
     },
   });
