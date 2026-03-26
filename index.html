@@ -326,8 +326,6 @@
   </div>
 </div>
 
-<script src="https://apis.google.com/js/api.js"         onload="onGapiLoad()"></script>
-<script src="https://accounts.google.com/gsi/client"    onload="onGisLoad()"></script>
 <script>
 'use strict';
 
@@ -665,6 +663,18 @@ function t(mins) {
   const m = mins % 60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
+
+// ===== スクリプト動的読み込み =====
+function loadScript(src, callback) {
+  const s = document.createElement('script');
+  s.src = src;
+  s.onload = callback;
+  s.onerror = () => console.error('Failed to load:', src);
+  document.head.appendChild(s);
+}
+
+loadScript('https://apis.google.com/js/api.js', onGapiLoad);
+loadScript('https://accounts.google.com/gsi/client', onGisLoad);
 </script>
 </body>
 </html>
