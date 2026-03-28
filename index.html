@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>スケジュールピッカー</title>
+  <meta property="og:title" content="スケジュールピッカー">
+  <meta property="og:description" content="Googleカレンダーの予定を見ながら候補日をサクサク選べます">
+  <meta property="og:type" content="website">
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
 
@@ -288,6 +291,32 @@
     .warning-note strong { color: #333; }
     .warning-note ol { padding-left: 18px; margin-top: 6px; }
     .warning-note li { margin-bottom: 2px; }
+
+    /* WebView警告 */
+    .webview-warning {
+      background: #fde8e8;
+      border: 1px solid #f5c6c6;
+      border-radius: 10px;
+      padding: 16px 20px;
+      max-width: 320px;
+      text-align: left;
+      font-size: 13px;
+      color: #c62828;
+      line-height: 1.7;
+    }
+    .webview-warning strong { font-size: 14px; }
+    .webview-warning .safari-btn {
+      display: block;
+      margin-top: 12px;
+      background: #1a73e8;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -300,7 +329,14 @@
 <!-- ===== Auth ===== -->
 <div id="auth-section">
   <p>Googleカレンダーの予定を見ながら<br>候補日をサクサク選べます</p>
-  <button class="google-btn" onclick="signIn()">
+  <div id="webview-warning" class="webview-warning" style="display:none">
+    <strong>⚠️ アプリ内ブラウザでは<br>Googleログインできません</strong>
+    <p style="margin-top:8px">LINE・Instagram・X などのアプリ内ブラウザでは、Googleのセキュリティポリシーによりログインがブロックされます。</p>
+    <p style="margin-top:6px">Safari または Chrome で開き直してください。</p>
+    <a class="safari-btn" id="open-in-safari-btn">Safari で開く</a>
+  </div>
+
+  <button class="google-btn" id="google-login-btn" onclick="signIn()">
     <svg width="18" height="18" viewBox="0 0 48 48">
       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
       <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -310,7 +346,7 @@
     Googleでログイン
   </button>
 
-  <div class="warning-note">
+  <div class="warning-note" id="warning-note">
     <strong>⚠️ 警告画面が出た場合の手順</strong>
     <ol>
       <li>「このアプリはGoogleで確認されていません」と表示されたら</li>
@@ -376,6 +412,40 @@ let weekStart = monday(new Date());
 let evMap     = {};  // "YYYY-MM-DD|HH:MM" → イベント名
 let blocks    = [];  // { date, start(mins), end(mins) }
 let dur       = 30;
+
+// ============================================================
+// WebView検出
+// ============================================================
+function isWebView() {
+  const ua = navigator.userAgent || '';
+  // LINE, Instagram, Facebook, X(Twitter), FBAN, Messenger, WeChat 等のアプリ内ブラウザ
+  if (/Line|LIFF|Instagram|FBAN|FBAV|FB_IAB|Twitter|Messenger|MicroMessenger|Snapchat/i.test(ua)) return true;
+  // iOS: Safari以外のWebView (WKWebView等)
+  if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua)) return true;
+  // Android WebView
+  if (/Android/.test(ua) && /wv|; wv\)/.test(ua)) return true;
+  return false;
+}
+
+(function checkWebView() {
+  if (!isWebView()) return;
+  const warning = document.getElementById('webview-warning');
+  const loginBtn = document.getElementById('google-login-btn');
+  const note = document.getElementById('warning-note');
+  if (warning) warning.style.display = 'block';
+  if (loginBtn) loginBtn.style.display = 'none';
+  if (note) note.style.display = 'none';
+  // 「Safariで開く」ボタン: x-safari-https スキームは使えないので location.href を利用
+  const safariBtn = document.getElementById('open-in-safari-btn');
+  if (safariBtn) {
+    safariBtn.href = location.href;
+    safariBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      // iOSのLINE等では window.open で外部ブラウザに飛ばせる場合がある
+      window.open(location.href, '_system') || window.open(location.href, '_blank');
+    });
+  }
+})();
 
 // ============================================================
 // Google Auth
