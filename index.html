@@ -100,6 +100,17 @@
       overflow-x: auto;
     }
     .dur-label { font-size: 12px; color: #666; flex-shrink: 0; }
+    .dur-toggle {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: 14px;
+      border: 1.5px solid #888;
+      color: #888;
+      background: white;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .dur-toggle.on { border-color: #1a73e8; color: #1a73e8; }
     .dur-btn {
       flex-shrink: 0;
       padding: 5px 14px;
@@ -112,6 +123,8 @@
       cursor: pointer;
     }
     .dur-btn.active { background: #1a73e8; color: white; }
+    .dur-btns { display: flex; gap: 6px; }
+    .dur-btns.hidden { display: none; }
 
     /* ===== Calendar grid ===== */
     .cal-outer {
@@ -187,15 +200,26 @@
       cursor: default;
       overflow: hidden;
     }
+    .slot.blocked.ev-cont {
+      border-top: none;
+    }
     .ev-title {
       position: absolute;
-      top: 0; left: 2px; right: 2px; bottom: 0;
+      top: 0; left: 2px; right: 2px;
       font-size: 9px;
       color: #1558d6;
-      display: flex;
-      align-items: center;
       overflow: hidden;
       white-space: nowrap;
+      padding: 2px 0;
+      z-index: 2;
+    }
+    .ev-bar {
+      position: absolute;
+      left: 0; right: 0; top: 0;
+      background: #c5daf8;
+      border-left: 3px solid #1a73e8;
+      border-radius: 3px;
+      z-index: 1;
     }
     .slot.selected { background: #34a853 !important; }
     .slot.sel-top    { border-radius: 4px 4px 0 0; }
@@ -366,11 +390,14 @@
       <button onclick="changeWeek(1)">次週 ›</button>
     </div>
     <div class="dur-bar">
-      <span class="dur-label">時間帯：</span>
-      <button class="dur-btn active" data-m="30"  onclick="setDur(30)">30分</button>
-      <button class="dur-btn"        data-m="60"  onclick="setDur(60)">1時間</button>
-      <button class="dur-btn"        data-m="90"  onclick="setDur(90)">1.5時間</button>
-      <button class="dur-btn"        data-m="120" onclick="setDur(120)">2時間</button>
+      <span class="dur-label">1タップ：</span>
+      <button class="dur-toggle on" id="dur-toggle" onclick="toggleDurBar()">時間幅</button>
+      <div class="dur-btns" id="dur-btns">
+        <button class="dur-btn active" data-m="30"  onclick="setDur(30)">30分</button>
+        <button class="dur-btn"        data-m="60"  onclick="setDur(60)">1時間</button>
+        <button class="dur-btn"        data-m="90"  onclick="setDur(90)">1.5時間</button>
+        <button class="dur-btn"        data-m="120" onclick="setDur(120)">2時間</button>
+      </div>
     </div>
   </div>
 
@@ -410,6 +437,7 @@ let gapiReady = false;
 let gisReady  = false;
 let weekStart = monday(new Date());
 let evMap     = {};  // "YYYY-MM-DD|HH:MM" → イベント名
+let evBlocks  = [];  // { date, start(mins), end(mins), title } 描画用
 let blocks    = [];  // { date, start(mins), end(mins) }
 let dur       = 30;
 
@@ -548,17 +576,38 @@ async function loadCal() {
 
 function buildEvMap(evs) {
   evMap = {};
+  evBlocks = [];
   for (const ev of evs) {
-    if (!ev.start?.dateTime) continue; // 終日予定はスキップ
+    const title = ev.summary || '予定';
+
+    if (ev.start?.date) {
+      // 終日予定: start.date〜end.date（end.dateは翌日を指す）
+      const sDate = new Date(ev.start.date + 'T00:00:00');
+      const eDate = new Date(ev.end.date + 'T00:00:00');
+      for (let d = new Date(sDate); d < eDate; d.setDate(d.getDate() + 1)) {
+        const date = fmtDate(d);
+        const sm = START_H * 60;
+        const em = END_H * 60;
+        for (let m = sm; m < em; m += 30) {
+          evMap[`${date}|${t(m)}`] = title;
+        }
+        evBlocks.push({ date, start: sm, end: em, title: '🗓 ' + title });
+      }
+      continue;
+    }
+
+    if (!ev.start?.dateTime) continue;
     const s = new Date(ev.start.dateTime);
     const e = new Date(ev.end.dateTime);
     const date = fmtDate(s);
-    // 開始を30分単位で切り捨て、終了を30分単位で切り上げ
     const sm = Math.floor((s.getHours() * 60 + s.getMinutes()) / 30) * 30;
     const em = Math.ceil((e.getHours() * 60 + e.getMinutes()) / 30) * 30;
+    // evMap: 30分スロット単位のブロック判定用
     for (let m = sm; m < em; m += 30) {
-      evMap[`${date}|${t(m)}`] = ev.summary || '予定';
+      evMap[`${date}|${t(m)}`] = title;
     }
+    // evBlocks: 描画用（1イベント=1ブロック）
+    evBlocks.push({ date, start: sm, end: em, title });
   }
 }
 
@@ -600,6 +649,15 @@ function renderGrid() {
   // 選択中のスロットセットを構築
   const selSet = buildSelSet();
 
+  // evBlocksをdate別にインデックス化（先頭スロット検出用）
+  const evStartSet = new Set();
+  const evBlockMap = {};  // "date|HH:MM" → evBlock
+  for (const eb of evBlocks) {
+    const key = `${eb.date}|${t(eb.start)}`;
+    evStartSet.add(key);
+    evBlockMap[key] = eb;
+  }
+
   // 時間スロット行
   for (let h = START_H; h < END_H; h++) {
     for (let half = 0; half < 2; half++) {
@@ -622,9 +680,23 @@ function renderGrid() {
         if (evMap[key]) {
           // 既存予定
           sl.classList.add('blocked');
-          const ev = mk('span', 'ev-title');
-          ev.textContent = evMap[key];
-          sl.appendChild(ev);
+
+          // イベントの先頭スロットならタイトルとバーを描画
+          if (evStartSet.has(key)) {
+            const eb = evBlockMap[key];
+            const slots = (eb.end - eb.start) / 30;
+            const barH = slots * 30; // 30px per slot
+
+            const bar = mk('div', 'ev-bar');
+            bar.style.height = barH + 'px';
+            sl.appendChild(bar);
+
+            const ev = mk('span', 'ev-title');
+            ev.textContent = eb.title;
+            sl.appendChild(ev);
+          } else {
+            sl.classList.add('ev-cont');
+          }
         } else if (selSet.has(key)) {
           // 選択済み
           sl.classList.add('selected');
@@ -659,41 +731,77 @@ function buildSelSet() {
 // スロットのタップ処理
 // ============================================================
 function tapSlot(dateStr, mins) {
-  // 既存ブロックに含まれていれば削除
+  // 既存予定があればスキップ
+  if (evMap[`${dateStr}|${t(mins)}`]) return;
+  if (mins >= END_H * 60) return;
+
+  // 既存ブロックに含まれていれば、そのスロットだけ削除（ブロックを分割）
   const idx = blocks.findIndex(b => b.date === dateStr && mins >= b.start && mins < b.end);
   if (idx >= 0) {
+    const b = blocks[idx];
     blocks.splice(idx, 1);
+    // 前半を残す
+    if (mins > b.start) {
+      blocks.push({ date: dateStr, start: b.start, end: mins });
+    }
+    // 後半を残す
+    if (mins + 30 < b.end) {
+      blocks.push({ date: dateStr, start: mins + 30, end: b.end });
+    }
+    blocks.sort((a, b) => a.date.localeCompare(b.date) || a.start - b.start);
     renderGrid();
     renderOutput();
     return;
   }
 
-  // 既存予定があればスキップ
-  if (evMap[`${dateStr}|${t(mins)}`]) return;
+  // dur分のスロットを追加（予定や画面外にぶつかるところまで）
+  let newStart = mins;
+  let newEnd = mins;
+  for (let m = mins; m < mins + dur; m += 30) {
+    if (m >= END_H * 60) break;
+    if (evMap[`${dateStr}|${t(m)}`]) break;
+    if (blocks.some(b => b.date === dateStr && m >= b.start && m < b.end)) break;
+    newEnd = m + 30;
+  }
+  if (newEnd === newStart) return; // 何も追加できなかった
 
-  // 選択するブロックの範囲チェック
-  const endMins = mins + dur;
-  for (let m = mins; m < endMins; m += 30) {
-    if (m >= END_H * 60) return;
-    if (evMap[`${dateStr}|${t(m)}`]) return;
-    if (blocks.some(b => b.date === dateStr && m >= b.start && m < b.end)) return;
+  // 隣接するブロックを探してマージ
+  const toRemove = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    if (b.date !== dateStr) continue;
+    if (b.end === newStart) { newStart = b.start; toRemove.push(i); }
+    else if (b.start === newEnd) { newEnd = b.end; toRemove.push(i); }
+  }
+  for (let i = toRemove.length - 1; i >= 0; i--) {
+    blocks.splice(toRemove[i], 1);
   }
 
-  // ブロック追加
-  blocks.push({ date: dateStr, start: mins, end: endMins });
+  blocks.push({ date: dateStr, start: newStart, end: newEnd });
   blocks.sort((a, b) => a.date.localeCompare(b.date) || a.start - b.start);
   renderGrid();
   renderOutput();
 }
 
 // ============================================================
-// 時間帯設定
+// 時間幅設定
 // ============================================================
 function setDur(m) {
   dur = m;
   document.querySelectorAll('.dur-btn').forEach(b => {
     b.classList.toggle('active', +b.dataset.m === m);
   });
+}
+
+function toggleDurBar() {
+  const btns = document.getElementById('dur-btns');
+  const toggle = document.getElementById('dur-toggle');
+  const visible = !btns.classList.contains('hidden');
+  btns.classList.toggle('hidden', visible);
+  toggle.classList.toggle('on', !visible);
+  if (visible) {
+    dur = 30; // 非表示時は30分に戻す
+  }
 }
 
 // ============================================================
