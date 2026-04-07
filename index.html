@@ -725,9 +725,7 @@ function hasEvents(key) {
 }
 
 // イベント詳細ポップアップを表示
-function showEvPopup(key) {
-  console.log('showEvPopup called', key, evMap[key]);
-  const entries = evMap[key];
+function showEvPopup(dateStr, entries) {
   if (!entries || entries.length === 0) return;
 
   // 重複排除（同じイベントが複数スロットにまたがるため）
@@ -738,8 +736,6 @@ function showEvPopup(key) {
     seen.add(id);
     return true;
   });
-
-  const dateStr = key.split('|')[0];
   const [y, mo, d] = dateStr.split('-');
   const dayDate = new Date(+y, +mo - 1, +d);
   const dow = DAY_JP[dayDate.getDay()];
@@ -865,10 +861,11 @@ function renderGrid() {
             if (selSet.has(key)) sl.classList.add('selected');
           }
 
-          // イベント付きスロットはタップで詳細表示
+          // イベント付きスロットはタップで詳細表示（データをキャプチャ）
+          const evData = evMap[key].slice();
           sl.addEventListener('click', (e) => {
             e.stopPropagation();
-            showEvPopup(key);
+            showEvPopup(dateStr, evData);
           });
 
           // イベントの先頭スロットならタイトルとバーを描画
