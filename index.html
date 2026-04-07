@@ -78,10 +78,10 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      padding: 4px 12px;
     }
     .week-nav button {
-      padding: 6px 14px;
+      padding: 4px 12px;
       border: 1px solid #dadce0;
       border-radius: 6px;
       background: white;
@@ -106,7 +106,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 12px 10px;
+      padding: 4px 12px 6px;
       overflow-x: auto;
     }
     .dur-label { font-size: 12px; color: #666; flex-shrink: 0; }
@@ -140,7 +140,7 @@
     .cal-outer {
       overflow: auto;
       -webkit-overflow-scrolling: touch;
-      max-height: 55vh;
+      max-height: 60vh;
       background: white;
       border-bottom: 1px solid #e8eaed;
     }
@@ -169,7 +169,7 @@
       z-index: 10;
       background: white;
       text-align: center;
-      padding: 2px 2px 3px;
+      padding: 1px 2px 2px;
       border-bottom: 2px solid #e8eaed;
       border-right: 1px solid #f0f0f0;
     }
@@ -177,8 +177,8 @@
     .day-hdr.today .day-num { color: #1a73e8; font-weight: 700; }
     .day-hdr.sat .day-dow { color: #1a73e8; }
     .day-hdr.sun .day-dow { color: #e53935; }
-    .day-dow { font-size: 10px; color: #666; }
-    .day-num { font-size: 15px; font-weight: 400; line-height: 1.2; }
+    .day-dow { font-size: 9px; color: #666; line-height: 1; }
+    .day-num { font-size: 14px; font-weight: 400; line-height: 1.1; }
 
     /* Time labels */
     .t-label {
@@ -316,18 +316,18 @@
 
     /* ===== Output ===== */
     .output-section {
-      padding: 14px 16px 32px;
+      padding: 8px 16px 16px;
       background: white;
-      margin-top: 8px;
+      margin-top: 4px;
     }
-    .output-section h2 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .output-section h2 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 
     .cand-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 12px;
-      min-height: 34px;
+      gap: 6px;
+      margin-bottom: 8px;
+      min-height: 0;
     }
     .cand-chip {
       display: flex;
