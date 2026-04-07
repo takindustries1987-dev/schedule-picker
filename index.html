@@ -726,6 +726,7 @@ function hasEvents(key) {
 
 // イベント詳細ポップアップを表示
 function showEvPopup(key) {
+  console.log('showEvPopup called', key, evMap[key]);
   const entries = evMap[key];
   if (!entries || entries.length === 0) return;
 
@@ -858,13 +859,17 @@ function renderGrid() {
           if (blocked) {
             // 通常の予定: 選択不可だがタップで詳細表示
             sl.classList.add('blocked');
-            sl.onclick = () => showEvPopup(key);
           } else {
             // 全てfreeの予定: 色は付けるが選択可能
             sl.classList.add('ev-free');
             if (selSet.has(key)) sl.classList.add('selected');
-            sl.onclick = () => tapSlot(dateStr, min);
           }
+
+          // イベント付きスロットはタップで詳細表示
+          sl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showEvPopup(key);
+          });
 
           // イベントの先頭スロットならタイトルとバーを描画
           if (evStartSet.has(key)) {
