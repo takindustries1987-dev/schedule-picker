@@ -852,21 +852,19 @@ function renderGrid() {
         if (hasEvents(key)) {
           const blocked = isSlotBlocked(key);
 
+          // レンダリング時にデータをキャプチャ
+          const evData = evMap[key].slice();
+
           if (blocked) {
-            // 通常の予定: 選択不可だがタップで詳細表示
+            // 通常の予定: タップで詳細表示
             sl.classList.add('blocked');
+            sl.onclick = () => showEvPopup(dateStr, evData);
           } else {
-            // 全てfreeの予定: 色は付けるが選択可能
+            // 全てfreeの予定: タップで詳細表示（選択はポップアップ内で）
             sl.classList.add('ev-free');
             if (selSet.has(key)) sl.classList.add('selected');
+            sl.onclick = () => showEvPopup(dateStr, evData);
           }
-
-          // イベント付きスロットはタップで詳細表示（データをキャプチャ）
-          const evData = evMap[key].slice();
-          sl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showEvPopup(dateStr, evData);
-          });
 
           // イベントの先頭スロットならタイトルとバーを描画
           if (evStartSet.has(key)) {
