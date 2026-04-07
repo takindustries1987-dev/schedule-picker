@@ -207,7 +207,7 @@
     .slot.hour-top { border-top: 1px solid #e8eaed; }
     .slot.blocked {
       background: #e8f0fe;
-      cursor: default;
+      cursor: pointer;
       overflow: hidden;
     }
     .slot.blocked.ev-cont {
@@ -233,6 +233,65 @@
       padding: 2px 2px 0;
       pointer-events: none;
     }
+    /* ===== Event detail popup ===== */
+    .ev-popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .ev-popup {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .ev-popup-close {
+      float: right;
+      border: none;
+      background: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #666;
+      padding: 0 4px;
+    }
+    .ev-popup h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0 0 12px;
+      padding-right: 24px;
+      color: #1a73e8;
+    }
+    .ev-popup-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .ev-popup-item:last-child { border-bottom: none; }
+    .ev-popup-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .ev-popup-time {
+      font-size: 13px;
+      color: #666;
+    }
+    .ev-popup-free {
+      display: inline-block;
+      font-size: 11px;
+      color: #888;
+      background: #f0f0f0;
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-left: 6px;
+    }
+
     .slot.ev-free {
       background: #f0f4ff;
       cursor: pointer;
@@ -626,7 +685,7 @@ function buildEvMap(evs) {
         for (let m = sm; m < em; m += 30) {
           const key = `${date}|${t(m)}`;
           if (!evMap[key]) evMap[key] = [];
-          evMap[key].push({ title, free: isFree });
+          evMap[key].push({ title, free: isFree, start: sm, end: em, allDay: true });
         }
         evBlocks.push({ date, start: sm, end: em, title: '🗓 ' + title, free: isFree });
       }
@@ -643,7 +702,7 @@ function buildEvMap(evs) {
     for (let m = sm; m < em; m += 30) {
       const key = `${date}|${t(m)}`;
       if (!evMap[key]) evMap[key] = [];
-      evMap[key].push({ title, free: isFree });
+      evMap[key].push({ title, free: isFree, start: sm, end: em, allDay: false });
     }
     // evBlocks: 描画用（1イベント=1ブロック）
     evBlocks.push({ date, start: sm, end: em, title, free: isFree });
@@ -662,6 +721,67 @@ function isSlotBlocked(key) {
 function hasEvents(key) {
   const entries = evMap[key];
   return entries && entries.length > 0;
+}
+
+// イベント詳細ポップアップを表示
+function showEvPopup(key) {
+  const entries = evMap[key];
+  if (!entries || entries.length === 0) return;
+
+  // 重複排除（同じイベントが複数スロットにまたがるため）
+  const seen = new Set();
+  const unique = entries.filter(e => {
+    const id = `${e.title}|${e.start}|${e.end}`;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  const dateStr = key.split('|')[0];
+  const [y, mo, d] = dateStr.split('-');
+  const dayDate = new Date(+y, +mo - 1, +d);
+  const dow = DAY_JP[dayDate.getDay()];
+  const heading = `${+mo}/${+d}（${dow}）の予定`;
+
+  const overlay = mk('div', 'ev-popup-overlay');
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  const popup = mk('div', 'ev-popup');
+
+  const closeBtn = mk('button', 'ev-popup-close');
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = () => overlay.remove();
+  popup.appendChild(closeBtn);
+
+  const h3 = mk('h3', '');
+  h3.textContent = heading;
+  popup.appendChild(h3);
+
+  for (const ev of unique) {
+    const item = mk('div', 'ev-popup-item');
+
+    const titleEl = mk('div', 'ev-popup-title');
+    titleEl.textContent = ev.title;
+    if (ev.free) {
+      const badge = mk('span', 'ev-popup-free');
+      badge.textContent = '予定なし';
+      titleEl.appendChild(badge);
+    }
+    item.appendChild(titleEl);
+
+    const timeEl = mk('div', 'ev-popup-time');
+    if (ev.allDay) {
+      timeEl.textContent = '終日';
+    } else {
+      timeEl.textContent = `${t(ev.start)} 〜 ${t(ev.end)}`;
+    }
+    item.appendChild(timeEl);
+
+    popup.appendChild(item);
+  }
+
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
 }
 
 // ============================================================
@@ -735,8 +855,9 @@ function renderGrid() {
           const blocked = isSlotBlocked(key);
 
           if (blocked) {
-            // 通常の予定: 選択不可
+            // 通常の予定: 選択不可だがタップで詳細表示
             sl.classList.add('blocked');
+            sl.onclick = () => showEvPopup(key);
           } else {
             // 全てfreeの予定: 色は付けるが選択可能
             sl.classList.add('ev-free');
